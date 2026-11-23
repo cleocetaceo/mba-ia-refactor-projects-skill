@@ -213,6 +213,23 @@ def require_admin(view):
 def executar_query():
     return jsonify(admin_controller.executar_query(request.get_json(silent=True) or {})), 200
 ```
+```python
+import re
+
+_LEITURA = re.compile(r"^\s*(SELECT|WITH)\b", re.IGNORECASE)
+
+def executar_query(dados):
+    sql = dados.get("sql", "") if isinstance(dados, dict) else ""
+    if not isinstance(sql, str) or not sql.strip():
+        raise ValidationError("Query não informada")
+    # Uma sentença, sem ';' extra. WITH só vale quando a sentença é um SELECT.
+    corpo = sql.strip().rstrip(";").strip()
+    if ";" in corpo or not _LEITURA.match(corpo) or re.search(r"\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|REPLACE|ATTACH)\b", corpo, re.IGNORECASE):
+        raise ValidationError("Apenas uma sentença SELECT é permitida")
+    db = get_db()
+    return {"dados": admin_model.consultar(db, corpo), "sucesso": True}
+```
+O token de admin não autoriza escrita. `SELECT` com token devolve o mesmo JSON de sucesso de antes; qualquer outra sentença responde 400.
 **Node**
 ```js
 // src/middlewares/adminAuth.js

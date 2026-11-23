@@ -1,18 +1,18 @@
-"""Hash de senha forte usando werkzeug.security (já incluso no Flask)."""
+"""Hash de senha forte via werkzeug.security (já incluído no Flask)."""
 from werkzeug.security import check_password_hash, generate_password_hash
 
-_HASH_PREFIXES = ("scrypt:", "pbkdf2:")
+_PREFIXOS_HASH = ("scrypt:", "pbkdf2:")
 
 
-def hash_password(raw_password):
-    return generate_password_hash(raw_password)
+def gerar_hash(senha):
+    return generate_password_hash(senha)
 
 
-def verify_password(stored_hash, raw_password):
-    if not is_hashed(stored_hash):
+def eh_hash(valor):
+    return isinstance(valor, str) and valor.startswith(_PREFIXOS_HASH) and valor.count("$") == 2
+
+
+def verificar(senha_hash, senha):
+    if not eh_hash(senha_hash):
         return False
-    return check_password_hash(stored_hash, raw_password)
-
-
-def is_hashed(value):
-    return isinstance(value, str) and value.startswith(_HASH_PREFIXES) and value.count("$") >= 2
+    return check_password_hash(senha_hash, senha)

@@ -8,51 +8,54 @@ from src.models import produto_model
 
 logger = logging.getLogger(__name__)
 
-MSG_PRODUTO_NAO_ENCONTRADO = "Produto não encontrado"
+MSG_NAO_ENCONTRADO = "Produto não encontrado"
 
 
-def listar_produtos():
+def listar():
     produtos = produto_model.listar(get_db())
-    logger.debug("Listando %d produtos", len(produtos))
+    logger.info("Listando %d produtos", len(produtos))
     return produtos
 
 
-def buscar_produto(produto_id):
-    produto = produto_model.buscar_por_id(get_db(), produto_id)
-    if not produto:
-        raise NotFoundError(MSG_PRODUTO_NAO_ENCONTRADO, extra={"sucesso": False})
-    return produto
-
-
-def pesquisar_produtos(termo, categoria, preco_min, preco_max):
-    return produto_model.pesquisar(
+def buscar(termo, categoria, preco_min, preco_max):
+    return produto_model.buscar(
         get_db(),
-        termo=termo,
-        categoria=categoria,
-        preco_min=validators.validar_filtro_preco(preco_min, "preco_min"),
-        preco_max=validators.validar_filtro_preco(preco_max, "preco_max"),
+        termo or "",
+        categoria or None,
+        validators.validar_filtro_preco(preco_min, "preco_min"),
+        validators.validar_filtro_preco(preco_max, "preco_max"),
     )
 
 
-def criar_produto(dados):
-    produto = validators.validar_produto(dados)
-    produto_id = produto_model.criar(get_db(), **produto)
+def obter(produto_id):
+    produto = produto_model.buscar_por_id(get_db(), produto_id)
+    if produto is None:
+        raise NotFoundError(MSG_NAO_ENCONTRADO, include_sucesso=True)
+    return produto
+
+
+def criar(dados):
+    campos = validators.validar_produto(dados)
+    db = get_db()
+    with db:
+        produto_id = produto_model.criar(db, **campos)
     logger.info("Produto criado com ID %s", produto_id)
-    return {"id": produto_id}
+    return produto_id
 
 
-def atualizar_produto(produto_id, dados):
+def atualizar(produto_id, dados):
     db = get_db()
-    if not produto_model.buscar_por_id(db, produto_id):
-        raise NotFoundError(MSG_PRODUTO_NAO_ENCONTRADO)
-    produto = validators.validar_produto(dados)
-    produto_model.atualizar(db, produto_id, **produto)
-    logger.info("Produto %s atualizado", produto_id)
+    if produto_model.buscar_por_id(db, produto_id) is None:
+        raise NotFoundError(MSG_NAO_ENCONTRADO)
+    campos = validators.validar_produto(dados)
+    with db:
+        produto_model.atualizar(db, produto_id, **campos)
 
 
-def deletar_produto(produto_id):
+def remover(produto_id):
     db = get_db()
-    if not produto_model.buscar_por_id(db, produto_id):
-        raise NotFoundError(MSG_PRODUTO_NAO_ENCONTRADO)
-    produto_model.desativar(db, produto_id)
-    logger.info("Produto %s removido do catálogo", produto_id)
+    if produto_model.buscar_por_id(db, produto_id) is None:
+        raise NotFoundError(MSG_NAO_ENCONTRADO)
+    with db:
+        produto_model.remover(db, produto_id)
+    logger.info("Produto %s deletado", produto_id)

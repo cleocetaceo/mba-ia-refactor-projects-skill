@@ -1,47 +1,37 @@
-"""Acesso a dados de usuários. A senha (hash) nunca sai deste módulo em listagens."""
+"""Acesso a dados de usuários. A senha (hash) nunca sai deste módulo pelas funções públicas."""
 
-TIPO_PADRAO = "cliente"
+TIPO_CLIENTE = "cliente"
 
-# Allowlist de campos públicos: senha/hash nunca é serializada.
+# Allowlist de campos expostos pela API.
 CAMPOS_PUBLICOS = ("id", "nome", "email", "tipo", "criado_em")
-CAMPOS_SESSAO = ("id", "nome", "email", "tipo")
+CAMPOS_LOGIN = ("id", "nome", "email", "tipo")
 
 
-def _to_public_dict(row, campos=CAMPOS_PUBLICOS):
+def _publico(row, campos=CAMPOS_PUBLICOS):
     return {campo: row[campo] for campo in campos}
 
 
 def listar(db):
-    rows = db.execute("SELECT * FROM usuarios ORDER BY id").fetchall()
-    return [_to_public_dict(row) for row in rows]
+    return [_publico(row) for row in db.execute("SELECT * FROM usuarios")]
 
 
 def buscar_por_id(db, usuario_id):
     row = db.execute("SELECT * FROM usuarios WHERE id = ?", (usuario_id,)).fetchone()
-    return _to_public_dict(row) if row else None
+    return _publico(row) if row else None
 
 
-def existe(db, usuario_id):
-    return db.execute("SELECT 1 FROM usuarios WHERE id = ?", (usuario_id,)).fetchone() is not None
+def buscar_credenciais_por_email(db, email):
+    """Uso interno da autenticação: devolve as linhas (com hash) que têm o e-mail."""
+    return db.execute("SELECT * FROM usuarios WHERE email = ? ORDER BY id", (email,)).fetchall()
 
 
-def email_cadastrado(db, email):
-    return db.execute("SELECT 1 FROM usuarios WHERE email = ?", (email,)).fetchone() is not None
+def para_login(row):
+    return _publico(row, CAMPOS_LOGIN)
 
 
-def buscar_credenciais(db, email):
-    """Retorna [(dados_de_sessao, hash_da_senha)] para o e-mail informado (uso exclusivo do login)."""
-    rows = db.execute("SELECT * FROM usuarios WHERE email = ? ORDER BY id", (email,)).fetchall()
-    return [(_to_public_dict(row, CAMPOS_SESSAO), row["senha"]) for row in rows]
-
-
-def criar(db, nome, email, senha_hash, tipo=TIPO_PADRAO):
+def criar(db, nome, email, senha_hash, tipo=TIPO_CLIENTE):
     cursor = db.execute(
         "INSERT INTO usuarios (nome, email, senha, tipo) VALUES (?, ?, ?, ?)",
         (nome, email, senha_hash, tipo),
     )
     return cursor.lastrowid
-
-
-def contar(db):
-    return db.execute("SELECT COUNT(*) FROM usuarios").fetchone()[0]

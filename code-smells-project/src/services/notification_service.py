@@ -1,4 +1,8 @@
-"""Notificações de pedido (simuladas via log; ponto único para integrar e-mail/SMS/push)."""
+"""Notificações de pedido (e-mail, SMS, push).
+
+Ainda não há integração real: os envios são registrados em log, como o projeto
+original fazia com print. Trocar por um provedor real só exige mudar este módulo.
+"""
 import logging
 
 logger = logging.getLogger(__name__)

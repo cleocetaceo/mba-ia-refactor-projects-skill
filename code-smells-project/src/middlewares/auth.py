@@ -1,10 +1,8 @@
-"""Autenticação de administrador via header X-Admin-Token."""
+"""Autenticação de administrador por token (header X-Admin-Token)."""
 import hmac
 from functools import wraps
 
 from flask import current_app, jsonify, request
-
-ADMIN_TOKEN_HEADER = "X-Admin-Token"
 
 
 def require_admin(view):
@@ -13,8 +11,8 @@ def require_admin(view):
         expected = current_app.config.get("ADMIN_TOKEN")
         if not expected:
             return jsonify({"erro": "Endpoint administrativo desabilitado"}), 403
-        provided = request.headers.get(ADMIN_TOKEN_HEADER, "")
-        if not hmac.compare_digest(provided.encode(), expected.encode()):
+        provided = request.headers.get("X-Admin-Token", "")
+        if not hmac.compare_digest(provided.encode("utf-8"), expected.encode("utf-8")):
             return jsonify({"erro": "Não autorizado"}), 401
         return view(*args, **kwargs)
 

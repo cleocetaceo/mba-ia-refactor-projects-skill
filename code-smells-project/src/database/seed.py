@@ -1,12 +1,11 @@
-"""Dados de exemplo e migração de senhas legadas (texto puro → hash)."""
+"""Dados de exemplo (mesmos do projeto original) e migração de senhas em texto puro."""
 import logging
 
-from src.database.connection import transaction
 from src.services import password_service
 
 logger = logging.getLogger(__name__)
 
-PRODUTOS_SEED = [
+PRODUTOS_EXEMPLO = (
     ("Notebook Gamer", "Notebook potente para jogos", 5999.99, 10, "informatica"),
     ("Mouse Wireless", "Mouse sem fio ergonômico", 89.90, 50, "informatica"),
     ("Teclado Mecânico", "Teclado mecânico RGB", 299.90, 30, "informatica"),
@@ -17,41 +16,44 @@ PRODUTOS_SEED = [
     ("Hub USB", "Hub USB 3.0 7 portas", 79.90, 40, "informatica"),
     ("SSD 1TB", "SSD NVMe 1TB", 449.90, 35, "informatica"),
     ("Camiseta Dev", "Camiseta estampa código", 59.90, 100, "vestuario"),
-]
+)
 
-# Credenciais de exemplo documentadas: gravadas com hash, o login continua igual.
-USUARIOS_SEED = [
+# Credenciais de desenvolvimento documentadas; as senhas são gravadas com hash.
+USUARIOS_EXEMPLO = (
     ("Admin", "admin@loja.com", "admin123", "admin"),
     ("João Silva", "joao@email.com", "123456", "cliente"),
     ("Maria Santos", "maria@email.com", "senha123", "cliente"),
-]
+)
 
 
 def seed_if_empty(db):
-    if db.execute("SELECT COUNT(*) FROM produtos").fetchone()[0] > 0:
+    """Popula o banco no boot quando não há produtos (mesma regra do original)."""
+    if db.execute("SELECT COUNT(*) FROM produtos").fetchone()[0] != 0:
         return
-    with transaction(db):
+    with db:
         db.executemany(
             "INSERT INTO produtos (nome, descricao, preco, estoque, categoria) VALUES (?, ?, ?, ?, ?)",
-            PRODUTOS_SEED,
+            PRODUTOS_EXEMPLO,
         )
         db.executemany(
             "INSERT INTO usuarios (nome, email, senha, tipo) VALUES (?, ?, ?, ?)",
-            [(nome, email, password_service.hash_password(senha), tipo) for nome, email, senha, tipo in USUARIOS_SEED],
+            [(nome, email, password_service.gerar_hash(senha), tipo) for nome, email, senha, tipo in USUARIOS_EXEMPLO],
         )
     logger.info("Banco populado com dados de exemplo")
 
 
-def migrate_plaintext_passwords(db):
-    """Converte senhas gravadas em texto puro por versões anteriores para hash forte."""
-    rows = db.execute("SELECT id, senha FROM usuarios").fetchall()
-    legadas = [(row["id"], row["senha"]) for row in rows if not password_service.is_hashed(row["senha"])]
+def migrar_senhas_legadas(db):
+    """Converte senhas em texto puro de bancos antigos para hash, preservando o login."""
+    legadas = [
+        (row["id"], row["senha"])
+        for row in db.execute("SELECT id, senha FROM usuarios WHERE senha IS NOT NULL")
+        if not password_service.eh_hash(row["senha"])
+    ]
     if not legadas:
         return
-    with transaction(db):
-        for usuario_id, senha in legadas:
-            db.execute(
-                "UPDATE usuarios SET senha = ? WHERE id = ?",
-                (password_service.hash_password(senha or ""), usuario_id),
-            )
-    logger.info("%d senha(s) legada(s) migrada(s) para hash", len(legadas))
+    with db:
+        db.executemany(
+            "UPDATE usuarios SET senha = ? WHERE id = ?",
+            [(password_service.gerar_hash(senha), usuario_id) for usuario_id, senha in legadas],
+        )
+    logger.warning("%d senha(s) em texto puro migrada(s) para hash", len(legadas))

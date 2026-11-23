@@ -1,6 +1,6 @@
 # Skill `refactor-arch` — Refatoração Arquitetural Automatizada
 
-Skill do Claude Code que analisa, audita e refatora projetos backend para o padrão MVC em 3 fases sequenciais (análise, auditoria com pausa para confirmação, refatoração com validação). A mesma skill, sem nenhuma alteração, foi executada nos 3 projetos legados deste repositório:
+Skill do Claude Code que analisa, audita e refatora projetos backend para o padrão MVC em 3 fases sequenciais (análise, auditoria com pausa para confirmação, refatoração com validação). A mesma skill está nos 3 projetos. O `code-smells-project` foi executado de novo depois que a Fase 3 passou a restringir SQL arbitrário à leitura.
 
 | Projeto | Stack | Arquitetura original | Findings | Aplicação após Fase 3 |
 |---|---|---|---|---|
@@ -170,7 +170,7 @@ Os anti-patterns saíram da análise manual: cada problema da seção A virou um
 
 | Projeto | CRITICAL | HIGH | MEDIUM | LOW | Total | APIs deprecated |
 |---|---|---|---|---|---|---|
-| 1 — code-smells-project | 6 | 6 | 5 | 4 | 21 | Nenhuma encontrada |
+| 1 — code-smells-project | 7 | 5 | 5 | 4 | 21 | Nenhuma encontrada |
 | 2 — ecommerce-api-legacy | 5 | 6 | 3 | 4 | 18 | Nenhuma encontrada |
 | 3 — task-manager-api | 4 | 3 | 7 | 4 | 18 | `Model.query.get`, `datetime.utcnow`, MD5 |
 
@@ -269,12 +269,13 @@ GET    /produtos/9999             -> 404    PUT    /pedidos/1/status          ->
 POST   /produtos                  -> 201    GET    /relatorios/vendas         -> 401
 POST   /produtos (inválido)       -> 400    GET    /relatorios/vendas [admin] -> 200
 PUT    /produtos/1                -> 200    POST   /admin/query               -> 401
-GET    /usuarios                  -> 200    POST   /admin/query [admin]       -> 200
-GET    /usuarios/1                -> 200    DELETE /produtos/11               -> 200
-POST   /usuarios                  -> 201    POST   /admin/reset-db [admin]    -> 200
+GET    /usuarios                  -> 200    POST   /admin/query SELECT [admin]-> 200
+GET    /usuarios/1                -> 200    POST   /admin/query INSERT [admin]-> 400
+POST   /usuarios                  -> 201    DELETE /produtos/11               -> 200
+                                          POST   /admin/reset-db [admin]    -> 200
 ```
 
-`GET /usuarios` agora devolve `{"email","id","nome","tipo","criado_em"}`, sem `senha`. O `/health` devolve `"debug": false` e não tem mais `secret_key`.
+`GET /usuarios` agora devolve `{"email","id","nome","tipo","criado_em"}`, sem `senha`. O `/health` não devolve mais `secret_key`, `db_path` nem `debug`.
 
 **Projeto 2** — `npm start` → `[INFO] LMS API rodando na porta 3000...`
 
@@ -312,7 +313,7 @@ O login com a credencial do seed (`joao@email.com` / `1234`) continua funcionand
 
 ### Mudanças de contrato (todas por segurança)
 
-- **P1:** `senha` foi removida de `/usuarios`, e `secret_key` e `db_path` foram removidos de `/health`. `/admin/reset-db`, `/admin/query` e `/relatorios/vendas` exigem `X-Admin-Token`. O campo `tipo` enviado no cadastro é ignorado. O DELETE de produto virou exclusão lógica.
+- **P1:** `senha` foi removida de `/usuarios`, e `secret_key`, `db_path` e `debug` foram removidos de `/health`. `/admin/reset-db`, `/admin/query` e `/relatorios/vendas` exigem `X-Admin-Token`. Com token, `/admin/query` aceita só uma sentença `SELECT` (ou `WITH` ... `SELECT`); `INSERT`, `UPDATE` e `DELETE` respondem 400. O campo `tipo` enviado no cadastro é ignorado.
 - **P2:** `/api/admin/financial-report` e `DELETE /api/users/:id` exigem `X-Admin-Token`. Um usuário novo precisa enviar `pwd` (a senha padrão `123456` deixou de existir). O DELETE agora remove também as matrículas e pagamentos do usuário, em transação.
 - **P3:** `password` foi removido das respostas. `DELETE /users/<id>` exige `X-Admin-Token`. `role` só é aplicado quando a requisição traz um token de admin válido. O `token` do login passou a ser assinado.
 

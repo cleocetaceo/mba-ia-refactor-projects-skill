@@ -1,11 +1,12 @@
-"""Entry point: `python app.py`. Toda a montagem da aplicação fica em src/app.py (create_app)."""
+"""Entry point: python app.py"""
 import logging
 
 from src.app import create_app
-from src.config.settings import Settings
 
 app = create_app()
+logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
-    logging.getLogger(__name__).info("Servidor iniciado em http://%s:%s", Settings.HOST, Settings.PORT)
-    app.run(host=Settings.HOST, port=Settings.PORT, debug=Settings.DEBUG)
+    host, port = app.config["HOST"], app.config["PORT"]
+    logger.info("SERVIDOR INICIADO - rodando em http://%s:%s", host, port)
+    app.run(host=host, port=port, debug=app.config["DEBUG"])

@@ -29,7 +29,7 @@ Leia cada arquivo **no início da fase que o utiliza** (não antes):
 2. **Nenhum arquivo é criado, editado, movido ou apagado nas Fases 1 e 2.** Só leitura e comandos não destrutivos.
 3. **A Fase 2 termina com a pergunta de confirmação e PARA.** Encerre sua resposta logo após a pergunta. Só inicie a Fase 3 se o usuário responder afirmativamente (`y`, `yes`, `s`, `sim`). Qualquer outra resposta encerra a skill sem modificar arquivos.
 4. **Evidência real.** Todo finding cita arquivo e linha(s) que você leu de fato. Nunca invente arquivo, linha, endpoint ou tabela.
-5. **Contrato HTTP preservado.** URLs, métodos, status codes de sucesso e chaves do JSON de resposta continuam iguais. As únicas mudanças de contrato permitidas são as de segurança descritas em `04-mvc-architecture-guidelines.md` (remover campos sensíveis e exigir credencial de admin em endpoints perigosos), e cada uma precisa ser anunciada no resumo da Fase 3.
+5. **Contrato HTTP preservado.** URLs, métodos, status codes de sucesso e chaves do JSON de resposta continuam iguais. As únicas mudanças de contrato permitidas são as de segurança descritas em `04-mvc-architecture-guidelines.md` (remover campos sensíveis, exigir credencial de admin em endpoints perigosos e restringir endpoint que executa SQL do cliente a uma única sentença de leitura), e cada uma precisa ser anunciada no resumo da Fase 3.
 6. **O comando de inicialização original continua funcionando** (ex.: `python app.py`, `npm start`).
 7. **Não toque em** `.claude/`, `.git/`, ambientes virtuais (`.venv/`, `venv/`), `node_modules/`, lockfiles nem arquivos de banco gerados.
 8. **Sem dependências novas** quando a biblioteca padrão ou o framework já resolve (ex.: `werkzeug.security` no Flask, `crypto` no Node). Se uma dependência nova for inevitável, justifique no resumo.
@@ -98,7 +98,7 @@ Só execute após confirmação explícita do usuário.
 Antes de alterar qualquer arquivo, suba a aplicação original e registre o status code de cada endpoint do inventário, usando requisições de exemplo seguras (siga a seção "Validação" do guideline). Pare a aplicação em seguida. Se o boot original já falhar, registre o erro e prossiga.
 
 ### 3.3 Refatorar
-1. Aplique os padrões do playbook, começando pelos CRITICAL.
+1. Aplique os padrões do playbook, começando pelos CRITICAL. Ao tratar AP-05, aplique o padrão P-05 inteiro: o middleware de admin e, quando o endpoint executa SQL enviado pelo cliente, a restrição a uma única sentença de leitura. Não pare no middleware.
 2. Crie a nova estrutura, mova o código para a camada correta e atualize imports.
 3. Remova os arquivos antigos que ficaram vazios ou foram substituídos, para não haver duas fontes de verdade.
 4. Mantenha o comando de boot original funcionando e crie `.env.example` com toda variável de configuração nova.
@@ -107,7 +107,7 @@ Antes de alterar qualquer arquivo, suba a aplicação original e registre o stat
 ### 3.4 Validar
 1. Instale dependências se necessário e suba a aplicação refatorada.
 2. Confirme que o boot ocorre sem erros nem tracebacks.
-3. Repita as requisições da linha de base e compare os status codes. Diferenças só são aceitas quando são as mudanças de segurança previstas; nesse caso, repita a chamada com a credencial configurada e confirme o status original.
+3. Repita as requisições da linha de base e compare os status codes. Diferenças só são aceitas quando são as mudanças de segurança previstas; nesse caso, repita a chamada com a credencial configurada e confirme o status original. Exceção: um endpoint que executa SQL enviado pelo cliente, com token válido, deve responder 200 para um `SELECT` e 400 para `INSERT`, `UPDATE`, `DELETE`, DDL ou mais de uma sentença. Confirme os dois casos.
 4. Pare a aplicação e apague artefatos gerados pela validação (bancos SQLite, logs temporários).
 5. Se algo falhar, corrija e valide de novo. Não encerre com a aplicação quebrada.
 
