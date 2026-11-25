@@ -98,7 +98,7 @@ Só execute após confirmação explícita do usuário.
 Antes de alterar qualquer arquivo, suba a aplicação original e registre o status code de cada endpoint do inventário, usando requisições de exemplo seguras (siga a seção "Validação" do guideline). Pare a aplicação em seguida. Se o boot original já falhar, registre o erro e prossiga.
 
 ### 3.3 Refatorar
-1. Aplique os padrões do playbook, começando pelos CRITICAL. Ao tratar AP-05, aplique o padrão P-05 inteiro: o middleware de admin e, quando o endpoint executa SQL enviado pelo cliente, a restrição a uma única sentença de leitura. Não pare no middleware.
+1. Aplique os padrões do playbook, começando pelos CRITICAL. Um finding só está fechado quando o código impede tudo o que o Impact dele descreve (regra de fechamento do playbook). Ao tratar AP-05, aplique o padrão P-05 inteiro: o middleware de admin em cada efeito do Impact (troca de papel, desativação, troca de e-mail ou senha de outro usuário, exclusão — não só o `role`), e, quando o endpoint executa SQL enviado pelo cliente, a restrição a uma única sentença de leitura. Não pare no middleware nem num campo só. Ao tratar AP-16, se o finding cita senha mínima de 4 caracteres, o default em config e no `.env.example` não pode continuar 4 (P-14).
 2. Crie a nova estrutura, mova o código para a camada correta e atualize imports.
 3. Remova os arquivos antigos que ficaram vazios ou foram substituídos, para não haver duas fontes de verdade.
 4. Mantenha o comando de boot original funcionando e crie `.env.example` com toda variável de configuração nova.

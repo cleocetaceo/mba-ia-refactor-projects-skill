@@ -23,8 +23,9 @@ def create_user():
 
 
 @user_bp.route('/users/<int:user_id>', methods=['PUT'])
+@require_admin
 def update_user(user_id):
-    user = user_controller.update_user(user_id, request.get_json(), allow_privileged_role=has_admin_credential())
+    user = user_controller.update_user(user_id, request.get_json(), allow_privileged_role=True)
     return jsonify(user), 200
 
 

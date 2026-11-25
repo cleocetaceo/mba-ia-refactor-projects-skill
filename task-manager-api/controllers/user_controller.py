@@ -70,6 +70,13 @@ def update_user(user_id, data, allow_privileged_role=False):
     user = get_or_404(User, user_id, USER_NOT_FOUND)
     data = require_payload(data)
 
+    if not allow_privileged_role and any(field in data for field in ('email', 'password', 'role', 'active')):
+        logger.warning(
+            'Alteração de conta recusada para o usuário id=%s: requisição sem credencial de admin',
+            user_id,
+        )
+        raise ForbiddenError('Alteração de conta exige credencial de admin')
+
     # Valida tudo antes de alterar a entidade.
     changes = {}
     if 'name' in data:
@@ -80,14 +87,12 @@ def update_user(user_id, data, allow_privileged_role=False):
         if existing and existing.id != user_id:
             raise ConflictError(EMAIL_TAKEN)
         changes['email'] = email
-    new_password = validate_password(data['password'], 'Senha muito curta') if 'password' in data else None
+    new_password = validate_password(
+        data['password'],
+        f'Senha deve ter no mínimo {Settings.MIN_PASSWORD_LENGTH} caracteres',
+    ) if 'password' in data else None
     if 'role' in data:
-        role = validate_role(data['role'])
-        if allow_privileged_role:
-            changes['role'] = role
-        else:
-            logger.warning('Alteração de role ignorada para o usuário id=%s: requisição sem credencial de admin',
-                           user_id)
+        changes['role'] = validate_role(data['role'])
     if 'active' in data:
         changes['active'] = validate_active(data['active'])
 

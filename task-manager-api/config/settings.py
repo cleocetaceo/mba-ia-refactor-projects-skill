@@ -34,4 +34,4 @@ class Settings:
 
     # Sem ADMIN_TOKEN, os endpoints administrativos ficam desabilitados (403).
     ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN') or None
-    MIN_PASSWORD_LENGTH = int(os.environ.get('MIN_PASSWORD_LENGTH', '4'))
+    MIN_PASSWORD_LENGTH = int(os.environ.get('MIN_PASSWORD_LENGTH', '8'))

@@ -21,6 +21,12 @@ Transformações concretas para cada anti-pattern do catálogo. Cada padrão tra
 | P-15 | AP-19, AP-20 | Constantes nomeadas e nomes claros |
 | P-16 | AP-21, AP-22 | Logging estruturado e remoção de código morto |
 
+## Regra de fechamento
+
+Um finding só está resolvido quando **nenhuma capacidade descrita no Impact dele** continua possível. Corrigir o exemplo mais óbvio do padrão e seguir em frente não fecha o finding.
+
+Antes de marcar o item em "Findings Addressed", releia o Impact escrito na Fase 2 e confira no código cada verbo dele (rebaixar, desativar, apagar, trocar senha, executar SQL, etc.). Se uma frase do Impact ainda vale para um cliente sem credencial, ou para o dado inválido citado, o padrão não foi aplicado.
+
 ---
 
 ## P-01 — Queries parametrizadas
@@ -245,7 +251,13 @@ module.exports = (adminToken) => (req, res, next) => {
   next();
 };
 ```
-**Privilégio enviado pelo cliente:** ignore `role`/`tipo` do body, a menos que a requisição tenha credencial de admin válida.
+**Feche o Impact inteiro, não só a troca de papel.** Se o Impact diz que um cliente anônimo vira admin, rebaixa ou desativa outros usuários, troca o e-mail ou a senha deles, ou apaga a conta com os dados, cada um desses efeitos precisa de controle. Ignorar `role` no controller e continuar gravando `active`, `email` e `password` deixa o finding aberto.
+
+- **Criação (`POST`):** ignore `role`/`tipo` do body sem credencial de admin válida e grave o papel default. Criar um usuário comum pode continuar anônimo.
+- **Atualização (`PUT`/`PATCH`) de usuário existente:** a rota exige o middleware de admin (`@require_admin` / `adminAuth`). Sem token válido → 401; sem `ADMIN_TOKEN` configurado → 403. Isso cobre rebaixar (`role`), desativar (`active`) e trocar `email` ou `password`/`senha`. Não implemente a proteção só dentro do controller, descartando um campo e aplicando os outros.
+- **Exclusão:** `DELETE` do usuário (e dos dados em cascata citados no Impact) usa o mesmo middleware.
+
+Registre a mudança em Contract Changes.
 
 ## P-06 — Serialização segura e logs sem dados sensíveis
 
@@ -595,6 +607,8 @@ def validate_product_payload(data, partial=False):
     """Uma única função usada por criar e atualizar."""
 ```
 Mantenha as mesmas mensagens de erro e os mesmos status (400/404/409) que a API já devolvia.
+
+**Senha mínima citada no finding.** Se a descrição ou o Impact apontam uma regra fraca — senha mínima de 4 caracteres, ou `MIN_PASSWORD_LENGTH` com default `4` em `config/settings.py` — eleve esse default para no mínimo 8, no código e no `.env.example`. Não deixe `4` como valor padrão. Create e update usam o mesmo mínimo. Senhas já gravadas pelo seed continuam válidas no login; senhas novas enviadas à API têm de atingir o novo mínimo.
 
 ## P-15 — Constantes nomeadas e nomes claros
 

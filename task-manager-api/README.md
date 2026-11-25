@@ -44,8 +44,11 @@ Veja `.env.example`. As principais:
 
 Exigem o header `X-Admin-Token` com o valor de `ADMIN_TOKEN`. Sem token válido a resposta é `401`. Se `ADMIN_TOKEN` não estiver configurado, a resposta é `403`.
 
+- `PUT /users/<id>`: altera nome, e-mail, senha, papel ou `active` (inclusive desativar outro usuário).
 - `DELETE /users/<id>`: remove o usuário e as tasks dele.
-- Campo `role` em `POST /users` e `PUT /users/<id>`: sem credencial de admin, o valor enviado é ignorado (o usuário é criado como `user` e o papel atual é mantido no update).
+- Campo `role` em `POST /users`: sem credencial de admin, o valor enviado é ignorado e o usuário é criado como `user`.
+
+Senhas novas em `POST /users` e `PUT /users/<id>` precisam ter no mínimo 8 caracteres (`MIN_PASSWORD_LENGTH`). As senhas do seed continuam válidas no login.
 
 ```bash
 ADMIN_TOKEN=troque-este-token python app.py
